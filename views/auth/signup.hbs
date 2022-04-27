@@ -3,7 +3,7 @@
   <form action="/auth/signup" method="POST">
  
     <label> Username
-      <input type="text" name="username" placeholder="ironhacker" />
+      <input type="text" name="username" placeholder="ironhacker"/>
     </label>
  
     <label> Email
@@ -11,11 +11,14 @@
     </label>
  
     <label> Password
-      <input type="password" name="password" placeholder="********" />
+      <input type="password" name="password" placeholder="********" required minlength="6"/>
     </label>
  
-    <button type="submit">Create account</button>
+    <button type="submit" class="btn btn-primary">Create account</button>
  
     {{!-- error message will be added here --}}
+    {{#if errorMessage}}
+        <p class="alert alert-danger" role="alert">{{errorMessage}}</p>
+    {{/if}}
   </form>
 </div>

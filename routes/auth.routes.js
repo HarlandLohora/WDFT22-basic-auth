@@ -6,6 +6,7 @@
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const User = require('../models/User.model')
+const mongoose = require("mongoose")
 
 // 1.- Crear una ruta para ENVIAR el Form al usuario - GET url '/auth/signup'
 // 2.- Crear una ruta para obtener la informacion del usuario 
@@ -27,8 +28,24 @@ router.get("/auth/signup", (req, res) => {
 // Check - Modificar req.body.password con el hash generado en el paso anterior
 // Guardar todo el req.body en nuestro modelo User/ guardar en BD
 
-router.post("/auth/signup", (req, res) => {
-    const { password, email } = req.body
+router.post("/auth/signup", (req, res, next) => {
+    const { password, email, username } = req.body
+
+    //Verificar que los datos vengan completos
+    if (!username || !email || !password) {
+        res.render("auth/signup", { errorMessage: "Todos los campos deben estar rellenados." })
+        return
+    }
+
+    const regex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
+    if (!regex.test(password)) {
+        res
+            .status(500)
+            .render('auth/signup', { errorMessage: 'Password needs to have at least 6 chars and must contain at least one number, one lowercase and one uppercase letter.' });
+        return;
+    }
+
+
     const saltRounds = 12
 
     const salt = bcrypt.genSaltSync(saltRounds)
@@ -43,7 +60,44 @@ router.post("/auth/signup", (req, res) => {
     User.create(req.body)
         .then(() => {
             res.redirect("/userProfile")
-        }).catch(console.log)
+        }).catch((err) => {
+            if (err instanceof mongoose.Error.ValidationError) {
+                res.status(500).render("auth/signup", { errorMessage: err.message })
+            }
+            else if (err.code === 11000) {
+                res.status(500).render('auth/signup', {
+                    errorMessage: 'Username and email need to be unique. Either username or email is already used.'
+                });
+            } else {
+                next(err);
+            }
+        })
+})
+
+router.get("/auth/login", (req, res) => {
+    res.render("auth/login")
+})
+
+router.post("/auth/login", (req, res) => {
+    //Verificar si el email y la contrasena son validas
+    //User
+    const { email, password } = req.body
+    console.log(email, password)
+    User.findOne({ email })
+        .then(usuarioEncontrado => {
+            console.log(usuarioEncontrado)
+            if (!usuarioEncontrado) {
+                res.render("auth/login", { errorMessage: "El email no esta registrado" })
+                return
+            } else if (bcrypt.compareSync(password, usuarioEncontrado.passwordHash)) {
+                res.render('users/user-profile', { usuarioEncontrado });
+            } else {
+                res.render('auth/login', { errorMessage: 'Incorrect password.' });
+            }
+            //res.redirect("/auth/login")
+        })
+        .catch(console.log)
+
 })
 
 module.exports = router;
